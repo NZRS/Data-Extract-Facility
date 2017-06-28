@@ -1,4 +1,4 @@
-# YAML specification for writing a job
+# YAML specification for writing a job
 
 Configuration of individual Data Extract jobs are done by writing a file in the [YAML](http://www.yaml.org/spec/1.2/spec.html) format. The technical details are on their website, but you might find the [Wikipedia page](https://en.wikipedia.org/wiki/YAML) easier reading. Alternatively, look at some examples (TODO: link to example page).
 

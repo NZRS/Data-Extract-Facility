@@ -9,7 +9,7 @@ These values sit under the 'db' key. This is a hash of database names and their 
 While no options are mandatory, you will need at least one database configuration for the system to work.
 
 | Key name | Type | Note |
-| --- | --- | --- | --- |
+| --- | ---  | --- |
 | type | Text | The database type, defaults to 'pg' (Postgres) if not specified. |
 | user | Text | The database username, if required. |
 | pass | Text | The database password, if required. |
@@ -22,7 +22,7 @@ While no options are mandatory, you will need at least one database configuratio
 These values sit under the 'mail' key. These options determine how DEF sends e-mail, as well as a default to or from address (which can be overridden in a job if needed). If type is 'sendmail', all other options are ignored.
 
 | Key name | Type | Note |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | from | Text | The default from address for e-mail sent (can be overridden on a per job basis). |
 | to | Text | The default to address for sending e-mails (can be overridden on a per job basis). |
 | type | Text | Either 'sendmail' or 'smtp'. 'sendmail' is assumed if not specified. |
@@ -36,7 +36,7 @@ These values sit under the 'mail' key. These options determine how DEF sends e-m
 Finally, there are some options which sit directly under the 'def' element. They are:
 
 | Key name | Type | Note |
-| --- | --- | --- | --- |
+| --- |  --- | --- |
 | delay\_after\_failure | Integer | The number of seconds to wait after a job fails before trying again |
 | directory | Text | The directory to process YAML files from. Can be overwritten with the --dir command line option. |
 | output\_directory | Text | The directory where files will be stored if the output is 'file' |

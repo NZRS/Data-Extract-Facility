@@ -2,7 +2,7 @@
 
 The Data Extract Facility (DEF) general function is to process a SQL query, optionally transform the data and the output it. The output could be to a file, an e-mail or another database.
 
-![docs/DEF workflow.png](Overview of DEF workflow)
+![docs/DEFWorkflow.png](Overview of DEF workflow)
 
 ## Running the Data Extract Facility
 
