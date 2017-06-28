@@ -1,0 +1,13 @@
+Error report from Date Extract Facility
+
+Unfortunately, there was an error when trying to run the following job.
+
+Name: [% job.name %]
+Description: [% job.description %]
+Job ID: [% jobrunid %]
+Placeholder date: [% placeholder_date.ymd() %]
+Started: [% started.strftime('%F %T.%3N%z') %]
+Finished: [% finished.strftime('%F %T.%3N%z') %]
+
+Error code: [% error.error_code %]
+Details: [% error.error_message %]

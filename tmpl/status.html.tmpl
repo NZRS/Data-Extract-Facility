@@ -1,0 +1,62 @@
+<h1>Status report from Date Extract Facility</h1>
+
+<table border="0">
+  <tbody>
+    <tr>
+      <th>Name:</th>
+      <td>[% job.name FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Description:</th>
+      <td>[% job.description FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>First ran:</th>
+      <td>[% status.first_run FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Last ran:</th>
+      <td>[% status.last_run FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Next run:</th>
+      <td>[% status.next_run FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Number of runs:</th>
+      <td>[% status.cnt_runs FILTER html %]</td>
+    </tr>
+  </tbody>
+</table>
+
+<table border="1">
+  <thead>
+    <tr>
+      <th>Job ID</th>
+      <th>Place holder date</th>
+      [% IF status.has_filename %]<th>File name</th>[% END %]
+      <th>Started</th>
+      <th>Finished</th>
+      <th>Time</th>
+      <th>Rows</th>
+      [% IF status.has_error %]<th>Error</th>[% END %]
+    </tr>
+  </thead>
+  <tbody>
+     [% FOREACH r IN status.runs %]
+       <tr>
+         <td[% IF r.results.size > 1 %] rowspan="[% r.results.size %]"[% END %]>[% r.id FILTER html %]</td>
+         <td[% IF r.results.size > 1 %] rowspan="[% r.results.size %]"[% END %]>[% r.placeholder_date FILTER html %]</td>
+         [% IF status.has_filename %]<td[% IF r.result.size > 1 %] rowspan="[% r.result.size %]"[% END %]>[% r.output_file FILTER html %]</td>[% END %]
+         [% FOREACH rr IN r.results %]
+           [% UNLESS loop.first %]<tr>[% END %]
+           <td>[% rr.started_dt.strftime('%F %T.%3N%z') FILTER html %]</td>
+           <td>[% rr.finished_dt.strftime('%F %T.%3N%z') FILTER html %]</td>
+           <td>[% rr.run_time FILTER html %]</td>
+           <td>[% rr.rows_recorded FILTER html %]</td>
+           [% IF status.has_error %]<td>[% rr.error FILTER html %]</td>[% END %]
+       </tr>
+         [% END %]
+     [% END %]
+  </tbody>
+</table>

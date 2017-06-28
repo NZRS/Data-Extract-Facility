@@ -1,0 +1,12 @@
+Notification report from Date Extract Facility
+
+This e-mail is to report that the below job successfully ran.
+
+Name: [% job.name %]
+Description: [% job.description %]
+Job ID: [% jobrunid %]
+Placeholder date: [% placeholder_date.ymd() %]
+Started: [% started.strftime('%F %T.%3N%z') %]
+Finished: [% finished.strftime('%F %T.%3N%z') %]
+Run time: [% run_time FILTER html %]
+Rows recorded: [% rows %]

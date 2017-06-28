@@ -1,0 +1,41 @@
+<h1>Notification report from Date Extract Facility</h1>
+
+<p>This e-mail is to report that the below job successfully ran.</p>
+
+<table border="0">
+  <tbody>
+    <tr>
+      <th>Name:</th>
+      <td>[% job.name FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Description:</th>
+      <td>[% job.description FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Job ID:</th>
+      <td>[% jobrunid FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Placeholder date:</th>
+      <td>[% placeholder_date.ymd() FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Started:</th>
+      <td>[% started.strftime('%F %T.%3N%z') FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Finished:</th>
+      <td>[% finished.strftime('%F %T.%3N%z') FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Run time:</th>
+      <td>[% run_time FILTER html %]</td>
+    </tr>
+    <tr>
+      <th>Rows recorded:</th>
+      <td>[% rows FILTER html %]</td>
+     <tr>
+  </tbody>
+</table>
+
