@@ -16,7 +16,7 @@ use IO::String;
 use JSON::XS 'encode_json';
 use List::MoreUtils qw'any mesh';
 use POSIX 'fmod';
-use Text::CSV_XS 1.23 'csv';
+use Text::CSV_XS;
 use Time::HiRes 'gettimeofday';
 use TryCatch;
 use YAML::Syck;
@@ -512,7 +512,12 @@ sub format_data {
     my $string = '';
 
     if ( $format eq 'csv' ) {
-        csv( in => $rows, headers => $col_names, out => \$string );
+        my $obj = IO::String->new($string);
+        my $csv = Text::CSV_XS->new ({ binary => 1 });
+        $csv->eol ("\r\n");
+        $csv->print ($obj, $col_names);
+        $csv->print ($obj, $_) for @$rows;
+        $obj->close() or _err(107, "When generating CSV: $!");
     }
     else {
         my @output_rows = ();
