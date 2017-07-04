@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+$| = 1;
 
 use strict;
 use warnings;
@@ -14,6 +15,20 @@ use TryCatch;
 
 my $error = undef;
 
+my %args =
+  ( map { $_, '' }
+      qw(config date directory help|h force-run job-run-id status verbose) );
+
+GetOptions( \%args,
+    qw(config=s date=s directory=s help! force-run=s job-run-id=s status! verbose!)
+);
+
+# If we only want the help file, show it and exit.
+if ( $args{help} ) {
+    system "pod2text", $0;
+    exit;
+}
+
 my $pidfile = File::Pid->new();
 if ( my $num = $pidfile->running ) {
     die "Already running: $num\n";
@@ -21,13 +36,6 @@ if ( my $num = $pidfile->running ) {
 $pidfile->write;
 
 try {
-    my %args = ( map { $_, '' }
-          qw(config date directory force-run job-run-id status verbose) );
-
-    GetOptions( \%args,
-        qw(config=s date=s directory=s force-run=s job-run-id=s status! verbose!)
-    );
-
     my $runner = Data::Extract::Runner->new( \%args );
     $runner->run();
 }
@@ -37,3 +45,66 @@ catch($e) {
 
 $pidfile->remove;
 die $error if $error;
+
+__END__
+
+=head1 NAME
+
+def.pl - Data Extract Facility
+
+=head1 SYNOPSYS
+
+def.pl [options]
+
+=head1 DESCRIPTION
+
+Coomand for the Data Extract Facility.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --config <file>
+
+Location of the configuration file. This value is mandatory.
+
+=item --directory <directory>
+
+Location of the YAML jobs file. If not specified, def.directory will be used
+from the config file.
+
+=item --force-run <filename>
+
+Only process the job in location specified (relative to directory), and
+ignore all other jobs
+
+=item --date <YYYY-MM-DD>
+
+If specified will run with place holders based on that date rather than
+today's date.
+
+=item --help
+
+This help page.
+
+=item --job-run-id <uuid>
+
+If specified, will re run the job run with the specified id, --date is ignored.
+
+=item --status
+
+If used, will e-mail stats about jobs that runs to the e-mail address for the
+job. Does not run the job.
+
+=item --verbose
+
+If used, will display status of what it is doing to STDOUT.
+
+=back
+
+=head1 SEE ALSO
+
+More information is available in the README.md file, including links to the
+information required in the YAML files.
+
+L<< https://github.com/NZRS/Data-Extract-Facility >>
