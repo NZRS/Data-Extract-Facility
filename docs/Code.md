@@ -27,7 +27,7 @@ These are a list of Perl modules that are required for the DEF script, including
 | List::MoreUtils | liblist-moreutils-perl | | For the 'any' and 'mesh' fuctions. |
 | POSIX | perl-base | | For the fmod function. |
 | Template | libtemplate-perl | | Generating text and HTML e-mails. |
-| Text::CSV_XS | libtext-csv-xs-perl | 1.23 | Write CSV data. Fast. |
+| Text::CSV_XS | libtext-csv-xs-perl | | Write CSV data. Fast. |
 | Time::HiRes | libperl5.XX | | Because DateTime->now() is only to the second :( |
 | TryCatch | libtrycatch-perl | | Capture errors. |
 | YAML::Syck | libyaml-syck-perl | | Reads YAML files. Fast. |
