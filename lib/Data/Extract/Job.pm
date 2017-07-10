@@ -513,11 +513,11 @@ sub format_data {
 
     if ( $format eq 'csv' ) {
         my $obj = IO::String->new($string);
-        my $csv = Text::CSV_XS->new ({ binary => 1 });
-        $csv->eol ("\r\n");
-        $csv->print ($obj, $col_names);
-        $csv->print ($obj, $_) for @$rows;
-        $obj->close() or _err(107, "When generating CSV: $!");
+        my $csv = Text::CSV_XS->new( { binary => 1 } );
+        $csv->eol("\r\n");
+        $csv->print( $obj, $col_names );
+        $csv->print( $obj, $_ ) for @$rows;
+        $obj->close() or _err( 107, "When generating CSV: $!" );
     }
     else {
         my @output_rows = ();
