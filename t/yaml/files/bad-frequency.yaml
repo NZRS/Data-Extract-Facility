@@ -1,0 +1,9 @@
+name: Another bad YAML file
+description: A YAML file with a bad frequency
+frequency: daily after 13pm
+source_db: mydb
+target_db: anotherdb
+sql: 'SELECT 1 FROM dual'
+output: file
+filename: /tmp/example.csv
+
