@@ -57,11 +57,10 @@ sub check_config {
     unless ( $config->{frequency} eq 'adhoc' ) {
         $config->{target_db}
           || _err( 120, "mandatory field 'target_db' not specified" );
-    }
-    else {
+
         # Check frequency value
         my $re_tod =
-          qr{ after (?:((?:2[0-3]|[01]?[0-9])(?::[0-5]?0-9])?)|((?:1[012]|[01]?[0-9])(?::[0-5]?0-9])?\s*[ap]m))};
+          qr{ after (?:((?:2[0-3]|[01]?[0-9])(?::[0-5]?0-9])?)|(?:(?:1[012]|0?[0-9])(?::[0-5]?0-9])?\s*[ap]m))};
         my $re_dow = qr{ on (?:mon|tues|wednes|thurs|fri|satur|sun)day};
         my $re_dom =
           qr{ on(?: or after)? the (?:[123]?1st|[12]?2nd|[12]?3rd|2?[4-9]th|1[0-9]th|[23]0th)};

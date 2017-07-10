@@ -1,0 +1,6 @@
+description: A YAML file with no description
+frequency: adhoc
+source_db: mydb
+sql: 'SELECT 1 FROM dual'
+output: file
+filename: /tmp/example.csv

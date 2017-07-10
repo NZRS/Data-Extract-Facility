@@ -1,0 +1,9 @@
+name: A job
+description: A decription for this job
+frequency: adhoc
+source_db: mydb
+sql: "SELECT 1, '$today$' FROM dual"
+output: file
+format: YaML
+compress: 1
+filename: "/tmp/example-%F.yaml.zip"
