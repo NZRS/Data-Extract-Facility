@@ -16,7 +16,7 @@ use IO::String;
 use JSON::XS 'encode_json';
 use List::MoreUtils qw'any mesh';
 use POSIX 'fmod';
-use Text::CSV_XS 1.23 'csv';
+use Text::CSV_XS;
 use Time::HiRes 'gettimeofday';
 use TryCatch;
 use YAML::Syck;
@@ -57,11 +57,10 @@ sub check_config {
     unless ( $config->{frequency} eq 'adhoc' ) {
         $config->{target_db}
           || _err( 120, "mandatory field 'target_db' not specified" );
-    }
-    else {
+
         # Check frequency value
         my $re_tod =
-          qr{ after (?:((?:2[0-3]|[01]?[0-9])(?::[0-5]?0-9])?)|((?:1[012]|[01]?[0-9])(?::[0-5]?0-9])?\s*[ap]m))};
+          qr{ after (?:((?:2[0-3]|[01]?[0-9])(?::[0-5]?0-9])?)|(?:(?:1[012]|0?[0-9])(?::[0-5]?0-9])?\s*[ap]m))};
         my $re_dow = qr{ on (?:mon|tues|wednes|thurs|fri|satur|sun)day};
         my $re_dom =
           qr{ on(?: or after)? the (?:[123]?1st|[12]?2nd|[12]?3rd|2?[4-9]th|1[0-9]th|[23]0th)};
@@ -512,7 +511,12 @@ sub format_data {
     my $string = '';
 
     if ( $format eq 'csv' ) {
-        csv( in => $rows, headers => $col_names, out => \$string );
+        my $obj = IO::String->new($string);
+        my $csv = Text::CSV_XS->new( { binary => 1 } );
+        $csv->eol("\r\n");
+        $csv->print( $obj, $col_names );
+        $csv->print( $obj, $_ ) for @$rows;
+        $obj->close() or _err( 107, "When generating CSV: $!" );
     }
     else {
         my @output_rows = ();

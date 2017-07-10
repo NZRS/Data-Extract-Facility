@@ -39,12 +39,22 @@ try {
     my $runner = Data::Extract::Runner->new( \%args );
     $runner->run();
 }
-catch($e) {
+catch( Data::Extract::Throwable $e) {
     $error = $e;
+}
+catch($e) {
+    $error = Data::Extract::Throwable->new(
+        error_code    => 100,
+        error_message => $e
+    );
 };
 
 $pidfile->remove;
-die $error if $error;
+
+if ($error) {
+    say 'Error ' . $error->error_code . ' (' . $error->error_message . ')';
+    exit $error->error_code;
+}
 
 __END__
 

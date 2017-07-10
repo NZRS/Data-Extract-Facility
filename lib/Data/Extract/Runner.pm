@@ -6,6 +6,7 @@ use 5.10.1;
 
 use Data::Dumper;
 use Data::Extract::Job;
+use Data::Extract::Throwable;
 use DBI;
 use Email::Sender::Transport::Sendmail;
 use Email::Sender::Transport::SMTP;
@@ -24,17 +25,23 @@ sub new {
     return $self;
 }
 
+sub _err {
+    my ( $error_code, $error_message ) = @_;
+
+    Data::Extract::Throwable->throw(
+        {
+            error_code    => $error_code,
+            error_message => $error_message
+        }
+    );
+}
+
 sub config {
     my $self = shift;
 
     state $config = {};
     unless ( scalar keys %$config ) {
         $self->debug('Loading global config file');
-        my $config_file = $self->{config};
-        die "--config option not specified\n" unless $config_file;
-        die "config file ($config_file) does not exist or is not readable\n"
-          unless -r $config_file;
-
         $config = LoadFile( $self->{config} )->{def};
     }
 
@@ -92,16 +99,16 @@ sub send_email {
             INCLUDE_PATH => "$Bin/../tmpl",
             INTERPOLATE  => 1,
         }
-    ) || die "$Template::ERROR\n";
+    ) || _err( 110, "While creating template object: $Template::ERROR" );
 
     $params->{config} = $self->config;
     $tt->process( "$template.txt.tmpl", $params, \$email{text_body} )
-      || die $tt->error(), "\n";
+      || _err( 110, 'While generating html template: ' . $tt->error() );
 
     if ( $args->{html} ) {
         $email{html_body} = '';
         $tt->process( "$template.html.tmpl", $params, \$email{html_body} )
-          || die $tt->error(), "\n";
+          || _err( 110, 'While generating html template: ' . $tt->error() );
     }
 
     # Generate the e-mail
@@ -261,16 +268,16 @@ sub get_dbh {
     my $database = shift // '';
     my $type     = shift // '';
 
-    die "Database not specified\n" unless $database;
-    die "Type not specified\n"     unless $type;
+    _err( 103, 'Database not specified' ) unless $database;
+    _err( 103, 'Type not specified' )     unless $type;
 
     state %dbhs;
 
     unless ( $dbhs{$type}{$database} ) {
         my $details = $self->config->{db}{$database}
-          // die "Database '$database' does not exist\n";
+          // _err( 103, "Database '$database' does not exist" );
         $details->{"is_$type"}
-          || die "Database '$database' is not of type '$type'\n";
+          || _err( 103, "Database '$database' is not of type '$type'" );
 
         my $dbtype = $details->{type} // 'Pg';
         my $conn = join ';',
@@ -282,7 +289,7 @@ sub get_dbh {
         my $dbh = $dbhs{$type}{$database} =
           DBI->connect( "dbi:$dbtype:$conn", $details->{user},
             $details->{pass}, { RaiseError => 1, AutoCommit => 1 } )
-          || die "Cannot connect to database: $DBI::errstr";
+          || _err( 103, "Cannot connect to database: $DBI::errstr" );
 
         $self->_check_target_db($dbh) if ( $details->{is_target} );
     }
@@ -291,10 +298,10 @@ sub get_dbh {
 }
 
 sub find_jobs {
-    my $self      = shift;
-    my $directory = $self->{directory};
-    die "Directory is not specfied\n" unless $directory;
-    die "Directory '$directory' does not exist or is not a directory\n"
+    my $self = shift;
+    my $directory = $self->{directory} || $self->config->{directory};
+    _err( 111, "Directory is not specfied" ) unless $directory;
+    _err( 112, "Directory '$directory' does not exist or is not a directory" )
       unless -d $directory;
 
     my @files =
@@ -302,12 +309,20 @@ sub find_jobs {
       ->in($directory);
     my @jobs =
       map { Data::Extract::Job->new( { runner => $self, file => $_ } ) } @files;
-    die "No jobs found in the directory '$directory'\n" unless @jobs;
+    _err( 113, "No jobs found in the directory '$directory'" ) unless @jobs;
     return wantarray ? @jobs : \@jobs;
 }
 
 sub run {
-    my $self          = shift;
+    my $self = shift;
+
+    # Check the config file exists
+    my $config_file = $self->{config};
+    _err( 111, '--config option not specified' )
+      unless $config_file;
+    _err( 112, "config file ($config_file) does not exist or is not readable" )
+      unless -r $config_file;
+
     my @jobs          = $self->find_jobs;
     my $job_run_count = 0;
 
@@ -315,7 +330,7 @@ sub run {
         if ( my $force_run = $self->{'force-run'} ) {
             if ( $force_run ne $job->{file} ) {
                 $self->debug(
-                    "Skipping $job->{file} as it is not the force-run file");
+                    "Skipping $job->{file} as it is not the force-run file" );
                 next;
             }
         }
