@@ -18,7 +18,8 @@ These are the supported command line options for the def.pl script.
 | --- | --- | --- | --- |
 | --config | File location | Yes | Location of the configuration file. |
 | --directory | Directory location | No | Location of the directory of YAML file. Required if def.directory is not defined in the config file. |
-| --force-run | File location | No | Only process the job in location specified (relative to directory), do not process other rules, and ignore all other jobs |
+| --force-run | File location | No | Only process the job in location specified (relative to directory), and ignore all other jobs |
+| --help |  | No | Displays the command line options. All other options are ignored. |
 | --date | Date (YYYY-MM-DD format) | No | If specified will run with place holders based on that date rather than today's date |
 | --job-run-id | UUID | No | If specified, will re run the job run with the specified id, --date is ignored. |
 | --status | Flag | No | If used, will e-mail stats about jobs that runs to the e-mail address for the job. Does not run the job.
