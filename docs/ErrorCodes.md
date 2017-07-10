@@ -14,6 +14,10 @@ These are the error codes that the Data Extract Facility may produce when runnin
 | 107 | Could not write the output to the file system. |
 | 108 | Could not connect to the database. |
 | 108 | An unknown error occurred. |
+| 110 | Could not generate from Template |
+| 111 | A command line option was not specified (and no default). |
+| 112 | The file or directory does not exist |
+| 113 | No jobs found. |
 | 120 | A mandatory value in the YAML file was not specified. |
 | 121 | The value of the frequency field was not valid. |
 | 122 | You specified a transformation, but did state the rule. |
