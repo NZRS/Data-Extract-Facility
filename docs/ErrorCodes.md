@@ -25,3 +25,5 @@ These are the error codes that the Data Extract Facility may produce when runnin
 | 124 | This type of output must have a filename specified. |
 | 125 | Target table not specified. |
 | 126 | Target column not specified. |
+| 127 | Target table or column is not valid. |
+| 128 | Minimum or maximum row count violation. |

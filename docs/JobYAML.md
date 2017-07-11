@@ -21,8 +21,10 @@ These are the keys that are supported:
 |compress | Boolean | No | Will compress a file or e-mail before sending. Default is not to compress. Compression method is zip. |
 | target\_table | String | when output is 'db' | The table that the results should be stored in. Required if output is not a file or e-mail. |
 | target\_columns | Array | when output is 'db' | A list of column names that the results should be stored in. Required if output is not a file or e-mail. |
-| target\_presql | String | No | Any SQL that needs to be run before inserting rows into the database |
-| target\_postsql | String | No | Any SQL that needs to be run after inserting the rows into the database. |
+| target\_presql | String | No | Any SQL that needs to be run before inserting rows into the database. Placeholder can be used here too. |
+| target\_postsql | String | No | Any SQL that needs to be run after inserting the rows into the database. Placeholder can be used here too. |
+| target\_min\_rows | Integer | No | The minimum number of rows to be written. If less than this, it will be considered an error. |
+| target\_max\_rows | Integer | No | The maximum number of rows to be written. If more than this, it will be considered an error. |
 | notify | Boolean | No | If true, you will receive an e-mail notifying you when the script has been processed. |
 | retry\_on\_failure | Boolean | No | If true, will try reprocessing earlier versions of the job that failed. This is only run once a job is completed successfully again. |
 | email»to | String or Array | No | Overrides the default e-mail address(es). This is the address(es) to send results to (if using e-mail output). It is also used to notify you if there are any errors. |

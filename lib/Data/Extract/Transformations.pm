@@ -22,12 +22,12 @@ sub add_totals {
         }
     }
 
-    my @total_row = ( ('') x scalar(@$headers) );
+    my @total_row = ( (undef) x scalar(@$headers) );
     foreach my $cnt ( 0 .. $#$config ) {
         $total_row[ $config->[$cnt] - 1 ] = $totals[$cnt];
     }
 
-    my $cnt = firstidx { $_ eq '' } @total_row;
+    my $cnt = firstidx { !defined($_) } @total_row;
     if ( $cnt != -1 ) {
         $total_row[$cnt] = 'TOTAL';
     }

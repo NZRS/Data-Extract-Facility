@@ -263,9 +263,11 @@ sub should_run {
 }
 
 sub generate_sql {
-    my ( $self, $date ) = @_;
+    my ( $self, $key ) = @_;
 
-    my $sql = $self->config->{sql};
+    my $sql = $self->config->{$key};
+    return unless $sql;
+
     if ( $sql =~ /\$[a-z]+\$/ ) {
         my $date = $self->{placeholder_date};
 
@@ -461,7 +463,7 @@ sub get_set_job_details {
 sub run_copy {
     my $self = shift;
 
-    my $sql = $self->generate_sql();
+    my $sql = $self->generate_sql('sql');
     $self->runner->debug('Running COPY to transfer the data');
 
     # Since we are using straight copy to copy, we can do this faster by
@@ -470,7 +472,8 @@ sub run_copy {
 
     $self->target_db->begin_work();
     try {
-        if ( $sql = $self->config->{target_presql} ) {
+        # Run the pre-SQL statement (if any)
+        if ( $sql = $self->generate_sql('target_presql') ) {
             $self->target_db->do($sql);
         }
 
@@ -487,7 +490,25 @@ sub run_copy {
 
         $self->target_db->pg_putcopyend();
 
-        if ( $sql = $self->config->{target_postsql} ) {
+        # Check that any minimum or maximums have been met
+        my $row_count = $self->{rows};
+        if ( my $c = $self->config->{target_min_rows} ) {
+            if ( $row_count < $c ) {
+                _err( 128,
+                    "Rows inserted ($row_count) is less than the minimum ($c)"
+                );
+            }
+        }
+        if ( my $c = $self->config->{target_max_rows} ) {
+            if ( $row_count > $c ) {
+                _err( 128,
+                    "Rows inserted ($row_count) is less than the minimum ($c)"
+                );
+            }
+        }
+
+        # Run the post-SQL statement (if any)
+        if ( $sql = $self->generate_sql('target_postsql') ) {
             $self->target_db->do($sql);
         }
     }
@@ -557,7 +578,7 @@ sub compress_string {
 sub run_job {
     my $self = shift;
 
-    my $sql = $self->generate_sql();
+    my $sql = $self->generate_sql('sql');
 
     $self->runner->debug('Getting rows from source database');
     my $csr = $self->source_db->prepare($sql);
@@ -577,12 +598,29 @@ sub run_job {
         }
     }
 
+    # Record the number of row stored (post-transformation)
+    my $row_count = $self->{rows} = scalar(@$rows);
+
+    # Check that any minimum or maximums have been met
+    if ( my $c = $self->config->{target_min_rows} ) {
+        if ( $row_count < $c ) {
+            _err( 128,
+                "Rows inserted ($row_count) is less than the minimum ($c)" );
+        }
+    }
+    if ( my $c = $self->config->{target_max_rows} ) {
+        if ( $row_count > $c ) {
+            _err( 128,
+                "Rows inserted ($row_count) is less than the minimum ($c)" );
+        }
+    }
+
     if ( $self->config->{output} eq 'db' ) {
         $self->runner->debug('Writing output to database');
         # We are writting to a database, lets do this
         $self->target_db->begin_work();
         try {
-            if ( $sql = $self->config->{target_presql} ) {
+            if ( $sql = $self->generate_sql('target_presql') ) {
                 $self->target_db->do($sql);
             }
 
@@ -598,7 +636,7 @@ sub run_job {
                 $csr->execute(@$row);
             }
 
-            if ( $sql = $self->config->{target_postsql} ) {
+            if ( $sql = $self->generate_sql('target_postsql') ) {
                 $self->target_db->do($sql);
             }
         }
@@ -614,8 +652,6 @@ sub run_job {
         $self->target_db->commit();
         return;
     }
-
-    $self->{rows} = scalar(@$rows);
 
     # Transform the data into a string (either YAML, JSON or CSV format)
     my $str = $self->format_data( $rows, $col_names );
@@ -1202,13 +1238,14 @@ A boolean whether this job should be run or not.
 
 =item B<Description>
 
-Generate the SQL that needs to be run on the source database. This will
-replace relative dates inline, since the COPY statement doesn't accept
-placeholders.
+Takes an key from the confiug and generate the SQL that needs to be run.
+This will replace relative dates inline, since the COPY statement doesn't
+accept placeholders.
 
 =item B<Input>
 
-None
+A key from the configuration to use as a statement. Will return nothing
+if this key does not exist, is not defined, or is false.
 
 =item B<Returns>
 
