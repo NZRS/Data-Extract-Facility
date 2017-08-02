@@ -97,7 +97,7 @@ isa_ok( $job->{placeholder_date}, 'DateTime', 'placeholder_date set' );
 my $today = $job->{placeholder_date}->ymd;
 like( $today, qr|^\d{4}\-\d{2}\-\d{2}$|, 'Today looks like a date' );
 is(
-    $job->generate_sql,
+    $job->generate_sql('sql'),
     qq{SELECT 1, '$today' FROM dual},
     'Correct SQL returned'
 );
