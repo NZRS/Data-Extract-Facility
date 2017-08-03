@@ -123,8 +123,9 @@ sub config {
 
     unless ( $self->{config_file} ) {
         $self->runner->debug('Reading config file');
+        my $directory = $self->runner->{directory} || $self->runner->config->{directory};
         my $config_file =
-          File::Spec->catfile( $self->runner->{directory}, $self->{file} );
+          File::Spec->catfile( $directory, $self->{file} );
         _err( 101,
             "config file ($config_file) does not exist or is not readable" )
           unless -r $config_file;
