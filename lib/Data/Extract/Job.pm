@@ -123,9 +123,9 @@ sub config {
 
     unless ( $self->{config_file} ) {
         $self->runner->debug('Reading config file');
-        my $directory = $self->runner->{directory} || $self->runner->config->{directory};
-        my $config_file =
-          File::Spec->catfile( $directory, $self->{file} );
+        my $directory =
+          $self->runner->{directory} || $self->runner->config->{directory};
+        my $config_file = File::Spec->catfile( $directory, $self->{file} );
         _err( 101,
             "config file ($config_file) does not exist or is not readable" )
           unless -r $config_file;
@@ -347,7 +347,7 @@ sub next_run {
         if ( my ( $hour, $min, $pm ) = ( $freq =~ $re_tod ) ) {
             $hour += 12 if lc($pm) eq 'pm' && $hour != 12;
             $hour = 0 if lc($pm) eq 'am' && $hour == 12;
-            $min = 0 if not defined $min;
+            $min = 0 if not defined $min or $min eq '';
             if ( $hour > $dt->hour()
                 || ( $hour == $dt->hour() && $min > $dt->minute() ) )
             {
@@ -984,17 +984,6 @@ sub run {
             $self->run_job();
         }
 
-        $self->{finished} = DateTime->from_epoch(
-            time_zone => $self->runner->time_zone,
-            epoch     => scalar gettimeofday
-        );
-
-        # If this fails, we are in a spot of bother since we won't have recorded
-        #  the result. It is unlikely to happen though because we have already
-        #  connected to the target database to insert a row in jobs_run (if
-        #  applicable)
-
-        $self->record_job_run();
     }
     catch( Data::Extract::Throwable $e) {
         $self->{error} = $e;
@@ -1005,6 +994,18 @@ sub run {
             error_message => $e
         );
     };
+
+    $self->{finished} = DateTime->from_epoch(
+        time_zone => $self->runner->time_zone,
+        epoch     => scalar gettimeofday
+    );
+
+    # If this fails, we are in a spot of bother since we won't have recorded
+    #  the result. It is unlikely to happen though because we have already
+    #  connected to the target database to insert a row in jobs_run (if
+    #  applicable)
+
+    $self->record_job_run();
 
     if ( $self->{error} ) {
         $self->send_error();
