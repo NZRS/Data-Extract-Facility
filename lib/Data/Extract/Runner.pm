@@ -220,7 +220,7 @@ sub _check_target_db {
                 },
                 {
                     name   => 'jobs_run_results_job_run_id_idx',
-                    column => 'job_run def.jobs_id'
+                    column => 'job_run_id'
                 },
             ],
         }
