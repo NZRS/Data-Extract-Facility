@@ -1,4 +1,4 @@
-use Test::More tests => 1;
+use Test::More tests => 3;
 
 use Data::Extract::Transformations;
 
@@ -20,3 +20,29 @@ my @expected = ( @rows, [ 'TOTAL', 16_152_336 ] );
 
 Data::Extract::Transformations::add_totals( \@rows, \@header, [2] );
 is_deeply( \@rows, \@expected, 'Received the expected result' );
+
+my @header = (qw(date fruit cnt));
+my @rows   = (
+    [ '2017-07-01', 'apple',  10 ],
+    [ '2017-07-01', 'banana', 5 ],
+    [ '2017-07-01', 'banana', 6 ],
+    [ '2017-08-01', 'apple',  12 ],
+    [ '2017-08-01', 'carrot', 13 ],
+);
+
+my %options = (
+    xaxis_column => 2,
+    xaxis_value  => 3,
+    xaxis_sort   => 'alpha',
+    totals       => 'last',
+    on_duplicate => 'sum',
+    on_empty     => '0',
+);
+
+my @expected_header = (qw(date apple banana carrot TOTAL));
+my @expected_rows =
+  ( [ '2017-07-01', 10, 11, 0, 21 ], [ '2017-08-01', 12, 0, 13, 25 ], );
+
+Data::Extract::Transformations::two_dimensions( \@rows, \@header, \%options );
+is_deeply( \@header, \@expected_header, 'Received the expected headers' );
+is_deeply( \@rows,    \@expected_rows,    'Received the expected rows' );
