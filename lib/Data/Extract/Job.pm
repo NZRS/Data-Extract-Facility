@@ -66,7 +66,7 @@ sub check_config {
           qr{ on(?: or after)? the (?:[123]?1st|[12]?2nd|[12]?3rd|2?[4-9]th|1[0-9]th|[23]0th)};
 
         if ( $config->{frequency} !~
-            /^(?:adhoc|(?:hourly|daily)$re_tod?|weekly$re_tod?$re_dow?|monthly$re_tod?$re_dow?$re_dom?)$/i
+            /^(?:adhoc|(?:hourly|daily)$re_tod?|weekly$re_tod?$re_dow?|(?:quarterly|monthly)$re_tod?$re_dow?$re_dom?)$/i
           )
         {
             _err( 121, "Frequency of '$config->{frequency}' not understood" );
@@ -337,11 +337,21 @@ sub next_run {
         my $re_dom = qr{ on(?: or after)? the (\d+)};
 
         # Daily => 'day', Weekly => 'week', etc
-        my $period = substr( $freq, 0, index( $freq, ' ' ) - 2 );
+        my $period =
+          index( $freq, ' ' ) == -1
+          ? substr( $freq, 0, -2 )
+          : substr( $freq, 0, index( $freq, ' ' ) - 2 );
         $period = 'day' if $period eq 'dai';
 
-        my $dt = DateTime->now( time_zone => $self->runner->time_zone )
-          ->truncate( to => $period );
+        my $dt = DateTime->now( time_zone => $self->runner->time_zone );
+        if ( $DateTime::VERSION < 1.32 && $period eq 'quarter' ) {
+            # Earlier versions don't truncate to quarters
+            $dt->truncate( to => 'month' );
+            $dt->set_month( int( ( $dt->month - 1 ) / 3 ) * 3 + 1 );
+        }
+        else {
+            $dt->truncate( to => $period );
+        }
 
         # Adjust the time of day if necessary
         if ( my ( $hour, $min, $pm ) = ( $freq =~ $re_tod ) ) {
@@ -377,9 +387,16 @@ sub next_run {
             $dt->add( days => $add_days ) if $add_days != 0;
         }
 
-      # If the resulting day or time is in the past, add one $period to the time
-        $dt->add( $period . 's' => 1 )
-          if $dt < DateTime->now( time_zone => $self->runner->time_zone );
+        # If the resulting day or time is in the past, add one $period to the
+        #time
+        if ( $dt < DateTime->now( time_zone => $self->runner->time_zone ) ) {
+            if ( $period eq 'quarter' ) {
+                $dt->add( 'months' => 3 );
+            }
+            else {
+                $dt->add( $period . 's' => 1 );
+            }
+        }
 
         $self->{next_run} = $dt;
         $self->runner->debug("The next run date is '$dt'");

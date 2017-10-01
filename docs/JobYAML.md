@@ -29,11 +29,11 @@ These are the keys that are supported:
 | retry\_on\_failure | Boolean | No | If true, will try reprocessing earlier versions of the job that failed. This is only run once a job is completed successfully again. |
 | email»to | String or Array | No | Overrides the default e-mail address(es). This is the address(es) to send results to (if using e-mail output). It is also used to notify you if there are any errors. |
 | email»from | String | No | Override the default from e-mail address. |
-| email»subject | String | No | Override the default subject (default is Report: <name>) |
+| email»subject | String | No | Override the default subject (default is Report: \<name\>) |
 
 ## Frequency value
 
-This value tells the DEF how often the job should be run. It should start with the word 'adhoc', 'hourly', 'daily', 'weekly' or 'monthly', optionally followed by a qualify. You can specify that it should run after a particular time by appending 'after <time>', for example 'after 2pm'. For weekly jobs you can specify a day of the week with 'on <day>', for example 'on Sunday'. For monthly jobs, you can specify a day of the week, or 'on the <day of month>' or 'on or after the <day of month>', for example 'on the 15th'. Using both day of week and 'on or after the' means you can specify the day of month you want it to run. For example 'on Wednesday on or after the 8th' will run on the second Wednesday in the month.
+This value tells the DEF how often the job should be run. It should start with the word 'adhoc', 'hourly', 'daily', 'weekly' or 'monthly', 'quarterly' optionally followed by a qualifier. You can specify that it should run after a particular time by appending 'after <time>', for example 'after 2pm'. For weekly jobs you can specify a day of the week with 'on <day>', for example 'on Sunday'. For monthly jobs, you can specify a day of the week, or 'on the <day of month>' or 'on or after the <day of month>', for example 'on the 15th'. Using both day of week and 'on or after the' means you can specify the day of month you want it to run. For example 'on Wednesday on or after the 8th' will run on the second Wednesday in the month.
 
 A job will always run when it is first inserted into the DEF. It will then be scheduled to run as per the frequency specified. If 'never' is specified as the frequency, the query will only be run manually.
 
