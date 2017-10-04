@@ -47,7 +47,7 @@
        <tr>
          <td[% IF r.results.size > 1 %] rowspan="[% r.results.size %]"[% END %]>[% r.id FILTER html %]</td>
          <td[% IF r.results.size > 1 %] rowspan="[% r.results.size %]"[% END %]>[% r.placeholder_date FILTER html %]</td>
-         [% IF status.has_filename %]<td[% IF r.result.size > 1 %] rowspan="[% r.result.size %]"[% END %]>[% r.output_file FILTER html %]</td>[% END %]
+         [% IF status.has_filename %]<td[% IF r.result.size > 1 %] rowspan="[% r.result.size %]"[% END %]>[% r.output_files.join(',') FILTER html %]</td>[% END %]
          [% FOREACH rr IN r.results %]
            [% UNLESS loop.first %]<tr>[% END %]
            <td>[% rr.started_dt.strftime('%F %T.%3N%z') FILTER html %]</td>

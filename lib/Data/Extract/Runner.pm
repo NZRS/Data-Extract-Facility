@@ -191,7 +191,7 @@ sub _check_target_db {
                 q{id                UUID NOT NULL PRIMARY KEY},
                 q{job_id            BIGINT REFERENCES def.jobs(id) NOT NULL},
                 q{placeholder_date  DATE NOT NULL},
-                q{output_file       TEXT},
+                q{output_files      TEXT[]},
             ],
             indexes => [
                 {
@@ -330,7 +330,7 @@ sub run {
         if ( my $force_run = $self->{'force-run'} ) {
             if ( $force_run ne $job->{file} ) {
                 $self->debug(
-                    "Skipping $job->{file} as it is not the force-run file" );
+                    "Skipping $job->{file} as it is not the force-run file");
                 next;
             }
         }

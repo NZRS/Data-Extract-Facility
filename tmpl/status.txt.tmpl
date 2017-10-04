@@ -13,7 +13,7 @@ Past ten runs:
 [% FOREACH r IN status.runs %]
 Job ID: [% r.id %]
 Placeholder Date: [% r.placeholder_date %]
-[% IF status.has_filename %]Filename: [% r.output_file %][% END %]
+[% IF status.has_filename %]Filename: [% r.output_files.join(',') %][% END %]
 [% FOREACH rr IN r.results %]
   Started: [% rr.started_dt.strftime('%F %T.%3N%z') %]
   Finished: [% rr.finished_dt.strftime('%F %T.%3N%z') %]

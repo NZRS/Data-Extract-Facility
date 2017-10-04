@@ -1,6 +1,6 @@
 # YAML specification for writing a job
 
-Configuration of individual Data Extract jobs are done by writing a file in the [YAML](http://www.yaml.org/spec/1.2/spec.html) format. The technical details are on their website, but you might find the [Wikipedia page](https://en.wikipedia.org/wiki/YAML) easier reading. Alternatively, look at some examples (TODO: link to example page).
+Configuration of individual Data Extract jobs are done by writing a file in the [YAML](http://www.yaml.org/spec/1.2/spec.html) format. The technical details are on their website, but you might find the [Wikipedia page](https://en.wikipedia.org/wiki/YAML) easier reading. Alternatively, look at [some examples](Examples.md).
 
 These are the keys that are supported:
 
@@ -12,8 +12,8 @@ These are the keys that are supported:
 | source\_db | String | Yes | The name of the source database to connect to. |
 | sql | String | Yes | The SQL statement that should be run. Placeholders values can be used for relative dates, see the section below for details. |
 | pause | Boolean | No | For some really long running queries the database can get inconsistent with the always-coming replication stream. Pausing the replication may fix this issue. Default is false. |
-| transform»rule | String | No | The transform rule to run. See transform rules (TODO: link) |
-| transform»args | Hash | No | An additional arguments that the transformation rules requires. |
+| transform»rule | String | No | The transform rule to run. See [transformation rules](Transformations.md) |
+| transform»args | Varies | No | An additional arguments that the transformation rules requires. |
 | target\_db | String | See notes | The name of the target database to stored results in. This is not required if your output is not a database, and the frequency is 'adhoc'. |
 | output | String | Yes | One of 'file', 'email' or 'db'. |
 | filename | String | when output is not 'db' | The filename to use. |
@@ -31,11 +31,19 @@ These are the keys that are supported:
 | email»from | String | No | Override the default from e-mail address. |
 | email»subject | String | No | Override the default subject (default is Report: \<name\>) |
 
+## Multiple queries in a single job
+
+If the output is 'email' or 'file', it is possible to run multiple queries in a single job. In these cases, multiple files will be written, or multiple attachments will be included in a single e-mail.
+
+To achieve this, create an element called `queries`, which is an array. Each array should have the following keys `sql`, `filename`, `transform`, `format`, and `compress`. The first two keys are mandatory. See the examples page for an example.
+
+Note that the 'target\_min\_rows' and 'target\_max\_rows' values will apply to the total number of rows recorded.
+
 ## Frequency value
 
-This value tells the DEF how often the job should be run. It should start with the word 'adhoc', 'hourly', 'daily', 'weekly' or 'monthly', 'quarterly' optionally followed by a qualifier. You can specify that it should run after a particular time by appending 'after <time>', for example 'after 2pm'. For weekly jobs you can specify a day of the week with 'on <day>', for example 'on Sunday'. For monthly jobs, you can specify a day of the week, or 'on the <day of month>' or 'on or after the <day of month>', for example 'on the 15th'. Using both day of week and 'on or after the' means you can specify the day of month you want it to run. For example 'on Wednesday on or after the 8th' will run on the second Wednesday in the month.
+This value tells the DEF how often the job should be run. It should start with the word 'adhoc', 'hourly', 'daily', 'weekly', 'monthly' or 'quarterly' optionally followed by a qualifier. You can specify that it should run after a particular time by appending 'after <time>', for example 'after 2pm'. For weekly jobs you can specify a day of the week with 'on <day>', for example 'on Sunday'. For monthly jobs, you can specify a day of the week, or 'on the <day of month>' or 'on or after the <day of month>', for example 'on the 15th'. Using both day of week and 'on or after the' means you can specify the day of month you want it to run. For example 'on Wednesday on or after the 8th' will run on the second Wednesday in the month.
 
-A job will always run when it is first inserted into the DEF. It will then be scheduled to run as per the frequency specified. If 'never' is specified as the frequency, the query will only be run manually.
+A job will always run when it is first inserted into the DEF. It will then be scheduled to run as per the frequency specified. If 'adhoc' is specified as the frequency, the query will only be run manually.
 
 ## SQL
 

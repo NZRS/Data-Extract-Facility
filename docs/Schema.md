@@ -27,7 +27,7 @@ This table represents on run of the job. The results table (below) represents ea
 | id | UUID | Primary key. |
 | job\_id | BIGINT | References the jobs table above. |
 | placeholder\_date | ARRAY | The placeholder date used for this run. |
-| output\_file | TEXT | The name of the file that was written or sent as an e-mail attachment. |
+| output\_files | TEXT[] | The name(s) of the file(s) that was written or sent as an e-mail attachment. |
 
 ### The def.jobs\_run\_result table
 
