@@ -14,8 +14,9 @@ use DateTime::Format::Strptime;
 use File::Spec;
 use IO::String;
 use JSON::XS 'encode_json';
-use List::MoreUtils qw'any mesh';
+use List::MoreUtils qw'all any mesh';
 use POSIX 'fmod';
+use Storable 'dclone';
 use Text::CSV_XS;
 use Time::HiRes 'gettimeofday';
 use TryCatch;
@@ -50,7 +51,7 @@ sub check_config {
     my ( $self, $config ) = @_;
 
     $self->runner->debug("Checking YAML configuration");
-    foreach my $key (qw(name description frequency source_db sql)) {
+    foreach my $key (qw(name description frequency source_db)) {
         $config->{$key} || _err( 120, "mandatory field '$key' not specified" );
     }
 
@@ -84,7 +85,16 @@ sub check_config {
         _err( 123, "output must be one of 'db', 'email' or 'file'" );
     }
 
-    unless ( $config->{output} eq 'db' || $config->{filename} ) {
+    unless ( $config->{sql}
+        || all { $_->{sql} } @{ $config->{queries} // [ {} ] } )
+    {
+        _err( 120, "mandatory field 'sql' not specified" );
+    }
+
+    unless ( $config->{output} eq 'db'
+        || $config->{filename}
+        || all { $_->{filename} } @{ $config->{queries} // [ {} ] } )
+    {
         _err( 124, "You must specify the filename" );
     }
 
@@ -264,9 +274,7 @@ sub should_run {
 }
 
 sub generate_sql {
-    my ( $self, $key ) = @_;
-
-    my $sql = $self->config->{$key};
+    my ( $self, $sql ) = @_;
     return unless $sql;
 
     if ( $sql =~ /\$[a-z]+\$/ ) {
@@ -306,21 +314,36 @@ sub generate_sql {
     return $sql;
 }
 
-sub output_filename {
+sub _generate_filename {
+    my $self     = shift;
+    my $name     = shift;
+    my $compress = shift // 0;
+
+    my $filename = $self->{placeholder_date}->strftime($name);
+    $filename .= '.zip'
+      if $compress
+      && lc( substr( $filename, -4 ) ) ne '.zip';
+    $self->runner->debug("The output file name is '$filename'");
+    return $filename;
+}
+
+sub _check_rows {
     my $self = shift;
 
-    if ( $self->config->{output} ne 'db'
-        && defined( $self->config->{filename} ) )
-    {
-        my $filename =
-          $self->{placeholder_date}->strftime( $self->config->{filename} );
-        $filename .= '.zip'
-          if $self->config->{compress}
-          && lc( substr( $filename, -4 ) ) ne '.zip';
-        $self->runner->debug("The output file name is '$filename'");
-        return $self->{filename} = $filename;
+    # Check that any minimum or maximums have been met
+    my $row_count = $self->{rows};
+    if ( my $c = $self->config->{target_min_rows} ) {
+        if ( $row_count < $c ) {
+            _err( 128,
+                "Rows inserted ($row_count) is less than the minimum ($c)" );
+        }
     }
-    return undef;
+    if ( my $c = $self->config->{target_max_rows} ) {
+        if ( $row_count > $c ) {
+            _err( 128,
+                "Rows inserted ($row_count) is less than the minimum ($c)" );
+        }
+    }
 }
 
 sub next_run {
@@ -462,8 +485,8 @@ sub get_set_job_details {
     }
 
     my $sql = q{
-        INSERT INTO def.jobs_run (id, job_id, placeholder_date, output_file)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO def.jobs_run (id, job_id, placeholder_date)
+        VALUES (?, ?, ?)
         RETURNING id
     };
 
@@ -472,8 +495,7 @@ sub get_set_job_details {
     $self->{jobrunid} =
       $self->target_db->selectrow_array( $sql, undef, $du->create_str(),
         $self->{jobid},
-        DateTime::Format::Pg->format_date( $self->{placeholder_date} ),
-        $self->output_filename, );
+        DateTime::Format::Pg->format_date( $self->{placeholder_date} ) );
 
     return;
 }
@@ -481,7 +503,7 @@ sub get_set_job_details {
 sub run_copy {
     my $self = shift;
 
-    my $sql = $self->generate_sql('sql');
+    my $sql = $self->generate_sql( $self->config->{sql} );
     $self->runner->debug('Running COPY to transfer the data');
 
     # Since we are using straight copy to copy, we can do this faster by
@@ -491,7 +513,7 @@ sub run_copy {
     $self->target_db->begin_work();
     try {
         # Run the pre-SQL statement (if any)
-        if ( $sql = $self->generate_sql('target_presql') ) {
+        if ( $sql = $self->generate_sql( $self->config->{target_presql} ) ) {
             $self->target_db->do($sql);
         }
 
@@ -509,24 +531,10 @@ sub run_copy {
         $self->target_db->pg_putcopyend();
 
         # Check that any minimum or maximums have been met
-        my $row_count = $self->{rows};
-        if ( my $c = $self->config->{target_min_rows} ) {
-            if ( $row_count < $c ) {
-                _err( 128,
-                    "Rows inserted ($row_count) is less than the minimum ($c)"
-                );
-            }
-        }
-        if ( my $c = $self->config->{target_max_rows} ) {
-            if ( $row_count > $c ) {
-                _err( 128,
-                    "Rows inserted ($row_count) is less than the minimum ($c)"
-                );
-            }
-        }
+        $self->_check_rows();
 
         # Run the post-SQL statement (if any)
-        if ( $sql = $self->generate_sql('target_postsql') ) {
+        if ( $sql = $self->generate_sql( $self->config->{target_postsql} ) ) {
             $self->target_db->do($sql);
         }
     }
@@ -544,8 +552,8 @@ sub run_copy {
 }
 
 sub format_data {
-    my ( $self, $rows, $col_names ) = @_;
-    my $format = lc $self->config->{format};
+    my ( $self, $format, $rows, $col_names ) = @_;
+    $format = lc $format;
     $self->runner->debug("Formating data into $format format");
     my $string = '';
 
@@ -572,11 +580,11 @@ sub format_data {
 }
 
 sub compress_string {
-    my ( $self, $str ) = @_;
+    my ( $self, $file, $str ) = @_;
     $self->runner->debug("Compressing data");
 
     my ( undef, undef, $filename ) =
-      File::Spec->splitpath( substr( $self->output_filename, 0, -4 ) );
+      File::Spec->splitpath( substr( $file, 0, -4 ) );
     my $zip = Archive::Zip->new();
     my $member = $zip->addString( $str, $filename );
     $member->desiredCompressionMethod(COMPRESSION_DEFLATED);
@@ -593,90 +601,78 @@ sub compress_string {
     return $compressed;
 }
 
+sub _write_to_db {
+    my $self = shift;
+    my $rows = shift;
+
+    $self->target_db->begin_work();
+    try {
+        if ( my $sql = $self->generate_sql( $self->config->{target_presql} ) ) {
+            $self->target_db->do($sql);
+        }
+
+        my $target_table = $self->config->{target_table};
+        my $target_columns =
+          join( ', ', @{ $self->config->{target_columns} // [] } );
+        my $values = join ', ',
+          ( ('?') x scalar( @{ $self->config->{target_columns} // [] } ) );
+        my $csr = $self->target_db->prepare(
+            "INSERT INTO $target_table($target_columns) VALUES ($values)");
+
+        foreach my $row (@$rows) {
+            $csr->execute(@$row);
+        }
+
+        if ( my $sql = $self->generate_sql( $self->config->{target_postsql} ) )
+        {
+            $self->target_db->do($sql);
+        }
+    }
+    catch( Data::Extract::Throwable $e) {
+        $self->target_db->rollback();
+        die($e);
+    }
+    catch($e) {
+        $self->target_db->rollback();
+        _err( 103, "An error occurred while inserting data: $e" );
+    };
+
+    $self->target_db->commit();
+    return;
+}
+
 sub run_job {
     my $self = shift;
 
-    my $sql = $self->generate_sql('sql');
+    my $config = dclone( $self->config );
 
-    $self->runner->debug('Getting rows from source database');
-    my $csr = $self->source_db->prepare($sql);
-    $csr->execute();
-    my $col_names = $csr->{NAME_lc};
-    my $rows      = $csr->fetchall_arrayref();
-    $csr->finish;
-
-    # Do we need to transform the data
-    if ( my $trans = $self->config->{transform} ) {
-        if ( my $sub = Data::Extract::Transformations->can( $trans->{rule} ) ) {
-            $self->runner->debug('Performing transformation');
-            $sub->( $rows, $col_names, $trans->{args} );
-        }
-        else {
-            _err( 105, "Rule '$trans->{rule}' does not exist!" );
-        }
-    }
-
-    # Record the number of row stored (post-transformation)
-    my $row_count = $self->{rows} = scalar(@$rows);
-
-    # Check that any minimum or maximums have been met
-    if ( my $c = $self->config->{target_min_rows} ) {
-        if ( $row_count < $c ) {
-            _err( 128,
-                "Rows inserted ($row_count) is less than the minimum ($c)" );
-        }
-    }
-    if ( my $c = $self->config->{target_max_rows} ) {
-        if ( $row_count > $c ) {
-            _err( 128,
-                "Rows inserted ($row_count) is less than the minimum ($c)" );
-        }
-    }
-
-    if ( $self->config->{output} eq 'db' ) {
-        $self->runner->debug('Writing output to database');
-        # We are writting to a database, lets do this
-        $self->target_db->begin_work();
-        try {
-            if ( $sql = $self->generate_sql('target_presql') ) {
-                $self->target_db->do($sql);
-            }
-
-            my $target_table = $self->config->{target_table};
-            my $target_columns =
-              join( ', ', @{ $self->config->{target_columns} // [] } );
-            my $values = join ', ',
-              ( ('?') x scalar( @{ $self->config->{target_columns} // [] } ) );
-            $csr = $self->target_db->prepare(
-                "INSERT INTO $target_table($target_columns) VALUES ($values)");
-
-            foreach my $row (@$rows) {
-                $csr->execute(@$row);
-            }
-
-            if ( $sql = $self->generate_sql('target_postsql') ) {
-                $self->target_db->do($sql);
+    # If just one query is configured, turn it into a single item array
+    unless ( defined $config->{queries} ) {
+        $config->{queries} = [ {} ];
+        foreach my $field (qw(sql transform filename format compress)) {
+            if ( defined $config->{$field} ) {
+                $config->{queries}[0]{$field} = delete $config->{$field};
             }
         }
-        catch( Data::Extract::Throwable $e) {
-            $self->target_db->rollback();
-            die($e);
+    }
+    elsif ( ref( $config->{queries} ) ne 'ARRAY' ) {
+        _err( 130, 'The queries element is not an array' );
+    }
+    else {
+        foreach my $i ( 0 .. $#{ $config->{queries} } ) {
+            if ( ref( $config->{queries}[$i] ) ne 'HASH' ) {
+                ++$i;
+                _err( 130, "The $i element queries is not a hash" );
+            }
         }
-        catch($e) {
-            $self->target_db->rollback();
-            _err( 103, "An error occurred while inserting data: $e" );
-        };
-
-        $self->target_db->commit();
-        return;
     }
 
-    # Transform the data into a string (either YAML, JSON or CSV format)
-    my $str = $self->format_data( $rows, $col_names );
-
-    # Do we need to compress the string
-    if ( $self->config->{compress} ) {
-        $str = $self->compress_string($str);
+    # You canot have multiple queries if the output is a database
+    if ( $config->{output} eq 'db'
+        && scalar( @{ $config->{queries} } ) > 1 )
+    {
+        _err( 129,
+            'You cannot specify multiple queries for a database output' );
     }
 
     my %types = (
@@ -685,31 +681,86 @@ sub run_job {
         yaml => 'text/yaml',
     );
 
-    if ( $self->config->{output} eq 'email' ) {
-        $self->runner->debug('Sending output via e-mail');
+    # Now run each query, and store them in the results array
+    $self->{filename} = [];
+    my @results = ();
+    foreach my $query ( @{ $config->{queries} } ) {
+        my $sql = $self->generate_sql( $query->{sql} );
+
+        $self->runner->debug('Getting rows from source database');
+        my $csr = $self->source_db->prepare($sql);
+        $csr->execute();
+        my $col_names = $csr->{NAME_lc};
+        my $rows      = $csr->fetchall_arrayref();
+        $csr->finish;
+
+        # Do we need to transform the data
+        if ( my $trans = $query->{transform} ) {
+            if ( my $sub =
+                Data::Extract::Transformations->can( $trans->{rule} ) )
+            {
+                $self->runner->debug('Performing transformation');
+                $sub->( $rows, $col_names, $trans->{args} );
+            }
+            else {
+                _err( 105, "Rule '$trans->{rule}' does not exist!" );
+            }
+        }
+
+        # Record the number of row stored (post-transformation)
+        $self->{rows} += scalar(@$rows);
+
+        # If we are writting to a database, we can do that now, and leave
+        if ( $config->{output} eq 'db' ) {
+            $self->_check_rows();
+            $self->runner->debug('Writing output to database');
+            $self->_write_to_db($rows);
+            return;
+        }
+
+        # Transform the data into a string (either YAML, JSON or CSV format)
+        my $str = $self->format_data( $query->{format}, $rows, $col_names );
+
+        # Determine the filename and content type
+        my $filename =
+          $self->_generate_filename( $query->{filename}, $query->{compress} );
+        push @{ $self->{filename} }, $filename;
+
         my $content_type =
-          $self->config->{compress}
+          $query->{compress}
           ? 'application/zip'
-          : $types{ lc $self->config->{format} };
+          : $types{ lc $query->{format} };
+
+        # Do we need to compress the string
+        if ( $query->{compress} ) {
+            $str = $self->compress_string( $filename, $str );
+        }
+
+        push @results,
+          {
+            data         => $str,
+            name         => $filename,
+            content_type => $content_type,
+          };
+    }
+
+    $self->_check_rows();
+
+    if ( $config->{output} eq 'email' ) {
+        $self->runner->debug('Sending output via e-mail');
 
         my $error = $self->runner->send_email(
             {
-                from    => $self->config->{email}{from},
-                to      => $self->config->{email}{to},
-                subject => (
-                    $self->config->{email}{subject}
-                      // 'REPORT: ' . $self->config->{name}
-                ),
+                from => $config->{email}{from},
+                to   => $config->{email}{to},
+                subject =>
+                  ( $config->{email}{subject} // 'REPORT: ' . $config->{name} ),
                 template => 'result',
-                params =>
-                  { job => { $self->config }, run_time => $self->{started} },
-                attachments => [
-                    {
-                        name         => $self->{filename},
-                        data         => $str,
-                        content_type => $content_type,
-                    },
-                ],
+                params   => {
+                    job      => $config,
+                    run_time => $self->{started}
+                },
+                attachments => \@results,
             }
         );
 
@@ -717,12 +768,14 @@ sub run_job {
     }
     else {
         $self->runner->debug('Writing output to file');
-        my $file = File::Spec->catfile( $self->runner->{output_directory},
-            $self->{filename} );
-        open( FH, '>', $file )
-          or _err( 107, "Cannot write to file ($file): $!" );
-        print FH $str;
-        close FH;
+        foreach my $result (@results) {
+            my $file = File::Spec->catfile( $self->runner->{output_directory},
+                $result->{name} );
+            open( FH, '>', $file )
+              or _err( 107, "Cannot write to file ($file): $!" );
+            print FH $result->{data};
+            close FH;
+        }
     }
 
     return;
@@ -750,6 +803,12 @@ sub record_job_run {
         $self->{rows},
         $error_message,
     );
+
+    if ( $self->{filename} ) {
+        $sql = q{UPDATE def.jobs_run SET output_files = ? WHERE id = ?};
+        $self->target_db->do( $sql, undef, $self->{filename},
+            $self->{jobrunid} );
+    }
 }
 
 sub notify {
@@ -876,7 +935,7 @@ sub generate_stats {
     };
 
     foreach my $run ( @{ $result->{runs} } ) {
-        $result->{has_filename} = 1 if $run->{output_file};
+        $result->{has_filename} = 1 if $run->{output_files};
         $run->{results} =
           $self->target_db->selectall_arrayref( $sql, { Slice => {} },
             $run->{id} );
@@ -1016,6 +1075,13 @@ sub run {
         time_zone => $self->runner->time_zone,
         epoch     => scalar gettimeofday
     );
+
+    # If there is an error, but no jobrunid, we must have died pretty early
+    #  in the process (e.g. missing config options). Lets just rethrow the
+    #  error
+    if ( $self->{error} && !$self->{jobrunid} ) {
+        die $self->{error};
+    }
 
     # If this fails, we are in a spot of bother since we won't have recorded
     #  the result. It is unlikely to happen though because we have already
@@ -1272,18 +1338,18 @@ A SQL statement.
 
 =back
 
-=head2 output_filename
+=head2 _generate_filename
 
 =over
 
 =item B<Description>
 
-Returns the name of the output file. The value in the YAML file
-is passed through strpftime.
+Returns the name of the output file, given the filename and a compress flag.
+The value of the file name is passed through strpftime.
 
 =item B<Input>
 
-None.
+Filename and Compress flag
 
 =item B<Returns>
 

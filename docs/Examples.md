@@ -54,6 +54,29 @@ Even though this report only sends an e-mail, the `target_db` value is required.
 
 ### Example 2
 
+This job is similair to the first, but will included two attachments in the e-mail.
+
+    name: Population totals for cities and countries
+    description: A report on the populations of various cities and countries
+    frequency: weekly
+    source_db: mydb
+    queries:
+      - sql: "SELECT name, population FROM cities"
+        transform:
+          rule: add_totals
+          args: [ 2 ]
+        format: csv
+        filename: population-city-%Y%m.csv
+      - sql: "SELECT name, population FROM countries"
+        format: csv
+        filename: population-country-%Y%m.csv
+    output: email
+    email:
+      to: user@example.org
+    target_db: anotherdb
+
+### Example 3
+
 The following job will get the number of new users that signed up yesterday, and populate the `signup_count` table on the target database. It shows the use of place holders in SQL queries. It will run daily.
 
     name: New user count
@@ -73,7 +96,7 @@ The following job will get the number of new users that signed up yesterday, and
       - signup_date
       - user_count
 
-### Example 3
+### Example 4
 
 While this job will copy certain values of the user table, after deleting any existing records on the target database (from `target_presql`), and then change the logins to upper case (from `target_postsql`). Once the job has run, an e-mail will be sent to `user@example.org` with the default subject of "NOTIFY: Copy user list".
 

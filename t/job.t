@@ -1,4 +1,4 @@
-use Test::More tests => 29;
+use Test::More tests => 28;
 
 use DateTime;
 use Data::Extract::Job;
@@ -97,14 +97,14 @@ isa_ok( $job->{placeholder_date}, 'DateTime', 'placeholder_date set' );
 my $today = $job->{placeholder_date}->ymd;
 like( $today, qr|^\d{4}\-\d{2}\-\d{2}$|, 'Today looks like a date' );
 is(
-    $job->generate_sql('sql'),
+    $job->generate_sql($job->config->{sql}),
     qq{SELECT 1, '$today' FROM dual},
     'Correct SQL returned'
 );
 
-###  output_filename
+###  _generate_filename
 is(
-    $job->output_filename,
+    $job->_generate_filename($job->config->{filename}, $job->config->{compress}),
     qq{/tmp/example-$today.yaml.zip},
     'Output file name is correct'
 );
@@ -144,17 +144,10 @@ my $expected = [
     { city => 'Alice Springs', minimum => 13.2, maximum => 28.8 },
 ];
 
-my $yaml = $job->format_data( $array, $headers );
+my $yaml = $job->format_data( $job->config->{format}, $array, $headers );
 my $result = Load($yaml);
 
 is_deeply( $result, $expected, 'YAML data formatted as expected' );
-
-###  compress_string
-
-# This test depends on YAML::Syck::Dump and Archive::Zip always producing
-#  the same result for the same string.
-my $compressed = $job->compress_string($yaml);
-is( length($compressed), 330, 'Compressed string is correct size' );
 
 ###  run_job
 # Cannot test as it requires a database connection
