@@ -21,6 +21,7 @@ use Text::CSV_XS;
 use Time::HiRes 'gettimeofday';
 use TryCatch;
 use YAML::Syck;
+$YAML::Syck::ImplicitTyping = 1;
 
 use Data::Extract::Transformations;
 
