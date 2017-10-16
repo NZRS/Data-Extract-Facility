@@ -17,6 +17,7 @@ use List::MoreUtils 'none';
 use Template;
 use TryCatch;
 use YAML::Syck;
+$YAML::Syck::ImplicitTyping = 1;
 
 sub new {
     my $class = shift;
@@ -327,6 +328,7 @@ sub run {
     my $job_run_count = 0;
 
     foreach my $job (@jobs) {
+        $self->debug("Processing '$job->{file}'");
         if ( my $force_run = $self->{'force-run'} ) {
             if ( $force_run ne $job->{file} ) {
                 $self->debug(
@@ -334,7 +336,11 @@ sub run {
                 next;
             }
         }
-        elsif ( !$job->should_run() ) {
+        elsif ( $job->config->{frequency} eq 'adhoc' ) {
+            $self->debug("Job $job->{file} is an adhoc job. Not running.");
+            next;
+        }
+        elsif ( !$self->{status} && !$job->should_run() ) {
             $self->debug("Job $job->{file} is not scheduled to run");
             next;
         }
