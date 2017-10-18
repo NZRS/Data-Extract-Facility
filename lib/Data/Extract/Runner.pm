@@ -284,7 +284,7 @@ sub get_dbh {
         my $conn = join ';',
           (
             map  { $_ . '=' . $details->{$_} }
-            grep { !/^(is_|user$|pass$|type$)/ } keys %$details
+            grep { !/^(?:is_|user$|pass$|type$|cmd_to_(?:pause|resume)$)/ } keys %$details
           );
 
         my $dbh = $dbhs{$type}{$database} =

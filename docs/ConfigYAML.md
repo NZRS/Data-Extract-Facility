@@ -13,8 +13,10 @@ While no options are mandatory, you will need at least one database configuratio
 | type | Text | The database type, defaults to 'pg' (Postgres) if not specified. |
 | user | Text | The database username, if required. |
 | pass | Text | The database password, if required. |
-| is_source | Boolean | True if this database can be used as a source database. |
-| is_target | Boolean | True if this database can be used as a target database. |
+| is\_source | Boolean | True if this database can be used as a source database. |
+| is\_target | Boolean | True if this database can be used as a target database. |
+| cmd\_to\_pause | String or Array | If set, will run this command rather than calling ``SELECT pg_xlog_replay_pause()`` if the database needs to be paused. |
+| cmd\_to\_resume | String or Array | If set, will run this command rather than calling ``SELECT pg_xlog_replay_resume()`` if the database needs to be resumed. |
 | * | Text | Anything else supplied will be passed directly to DBI. Examples include database or dbname or db, service, host, port. |
 
 # Mail sending options.

@@ -1053,7 +1053,16 @@ sub run {
         # Do we need to pause the replication
         if ( $self->config->{pause} ) {
             $self->runner->debug("Pausing replication");
-            $self->source_db->do("SELECT pg_xlog_replay_pause()");
+            if ( my $cmd =
+                $self->runner->config->{db}{ $self->config->{source_db} }
+                {cmd_to_pause} )
+            {
+                $cmd = [$cmd] unless ref $cmd;
+                system(@$cmd);
+            }
+            else {
+                $self->source_db->do("SELECT pg_xlog_replay_pause()");
+            }
         }
 
         if (   $self->config->{output} eq 'db'
@@ -1082,8 +1091,17 @@ sub run {
     if ( $self->config->{pause} ) {
         # If it fails, there isn't much we can do
         try {
-            $self->source_db->do("SELECT pg_xlog_replay_resume()");
             $self->runner->debug("Resuming replication");
+            if ( my $cmd =
+                $self->runner->config->{db}{ $self->config->{source_db} }
+                {cmd_to_resume} )
+            {
+                $cmd = [$cmd] unless ref $cmd;
+                system(@$cmd);
+            }
+            else {
+                $self->source_db->do("SELECT pg_xlog_replay_resume()");
+            }
         }
         catch {    # Do nothing
         };
