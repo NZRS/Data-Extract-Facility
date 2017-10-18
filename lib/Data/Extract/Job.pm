@@ -1050,6 +1050,21 @@ sub run {
         );
         $self->get_set_job_details();
 
+        # Do we need to pause the replication
+        if ( $self->config->{pause} ) {
+            $self->runner->debug("Pausing replication");
+            if ( my $cmd =
+                $self->runner->config->{db}{ $self->config->{source_db} }
+                {cmd_to_pause} )
+            {
+                $cmd = [$cmd] unless ref $cmd;
+                system(@$cmd);
+            }
+            else {
+                $self->source_db->do("SELECT pg_xlog_replay_pause()");
+            }
+        }
+
         if (   $self->config->{output} eq 'db'
             && !$self->config->{transform}
             && $self->source_db->{Driver}{Name} eq 'Pg' )
@@ -1071,6 +1086,26 @@ sub run {
             error_message => $e
         );
     };
+
+    # Do we need to resume the replication
+    if ( $self->config->{pause} ) {
+        # If it fails, there isn't much we can do
+        try {
+            $self->runner->debug("Resuming replication");
+            if ( my $cmd =
+                $self->runner->config->{db}{ $self->config->{source_db} }
+                {cmd_to_resume} )
+            {
+                $cmd = [$cmd] unless ref $cmd;
+                system(@$cmd);
+            }
+            else {
+                $self->source_db->do("SELECT pg_xlog_replay_resume()");
+            }
+        }
+        catch {    # Do nothing
+        };
+    }
 
     $self->{finished} = DateTime->from_epoch(
         time_zone => $self->runner->time_zone,
