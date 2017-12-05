@@ -166,10 +166,9 @@ sub source_db {
     }
     catch( Data::Extract::Throwable $e) {
         die($e);
-    }
-    catch($e) {
+      } catch($e) {
         _err( 108, "Could not connect to the source database: $e" );
-    };
+      };
 }
 
 sub target_db {
@@ -179,10 +178,9 @@ sub target_db {
     }
     catch( Data::Extract::Throwable $e) {
         die($e);
-    }
-    catch($e) {
+      } catch($e) {
         _err( 108, "Could not connect to the target database: $e" );
-    };
+      };
 }
 
 sub should_run {
@@ -541,18 +539,18 @@ sub run_copy {
         $self->_check_rows();
 
         # Run the post-SQL statement (if any)
-        if ( my $sql = $self->generate_sql( $self->config->{target_postsql} ) ) {
+        if ( my $sql = $self->generate_sql( $self->config->{target_postsql} ) )
+        {
             $self->target_db->do($sql);
         }
     }
     catch( Data::Extract::Throwable $e) {
         $self->target_db->rollback();
-        die($e);
-    }
-    catch($e) {
+          die($e);
+      } catch($e) {
         $self->target_db->rollback();
-        _err( 103, "An error occurred while copying data: $e" );
-    };
+          _err( 103, "An error occurred while copying data: $e" );
+      };
 
     $self->target_db->commit();
     return;
@@ -571,8 +569,8 @@ sub format_data {
         $csv->print( $obj, $_ ) for @$rows;
         $obj->close() or _err( 107, "When generating CSV: $!" );
     }
-    elsif ($format ne 'json' and $format ne 'yaml') {
-        _err (131, "Unknown format '$format'");
+    elsif ( $format ne 'json' and $format ne 'yaml' ) {
+        _err( 131, "Unknown format '$format'" );
     }
     else {
         my @output_rows = ();
@@ -639,12 +637,11 @@ sub _write_to_db {
     }
     catch( Data::Extract::Throwable $e) {
         $self->target_db->rollback();
-        die($e);
-    }
-    catch($e) {
+          die($e);
+      } catch($e) {
         $self->target_db->rollback();
-        _err( 103, "An error occurred while inserting data: $e" );
-    };
+          _err( 103, "An error occurred while inserting data: $e" );
+      };
 
     $self->target_db->commit();
     return;
@@ -858,7 +855,8 @@ sub send_error {
 
     my $params = { job => { $self->config }, };
 
-    foreach my $word (qw(file placeholder_date jobrunid started finished rows error))
+    foreach
+      my $word (qw(file placeholder_date jobrunid started finished rows error))
     {
         $params->{$word} = $self->{$word};
     }
@@ -1088,13 +1086,12 @@ sub run {
     }
     catch( Data::Extract::Throwable $e) {
         $self->{error} = $e;
-    }
-    catch($e) {
+      } catch($e) {
         $self->{error} = Data::Extract::Throwable->new(
             error_code    => 100,
             error_message => $e
         );
-    };
+      };
 
     # Do we need to resume the replication
     if ( $self->config->{pause} ) {
