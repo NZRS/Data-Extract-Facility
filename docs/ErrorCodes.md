@@ -29,3 +29,4 @@ These are the error codes that the Data Extract Facility may produce when runnin
 | 128 | Minimum or maximum row count violation. |
 | 129 | You specified multiple queries while the output was a database. |
 | 130 | A value in the queries element is not an array of hashes. |
+| 131 | Unknown file format. |
