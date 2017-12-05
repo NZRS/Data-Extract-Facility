@@ -164,6 +164,9 @@ sub source_db {
     try {
         return $self->runner->get_dbh( $self->config->{source_db}, 'source' );
     }
+    catch( Data::Extract::Throwable $e) {
+        die($e);
+    }
     catch($e) {
         _err( 108, "Could not connect to the source database: $e" );
     };
@@ -173,6 +176,9 @@ sub target_db {
     my $self = shift;
     try {
         return $self->runner->get_dbh( $self->config->{target_db}, 'target' );
+    }
+    catch( Data::Extract::Throwable $e) {
+        die($e);
     }
     catch($e) {
         _err( 108, "Could not connect to the target database: $e" );
@@ -190,14 +196,14 @@ sub should_run {
         return;
     }
 
-    if ( my $job_run_id = $self->runner->config->{'job-run-id'} ) {
+    if ( my $job_run_id = $self->runner->{'job-run-id'} ) {
 
         # Check to see if the job run id (job-run-id) exists for this job
         my $sql = q{
             SELECT j.id, jr.placeholder_date
-            FROM jobs j
-                JOIN job_run jr ON j.id = jr.job_id
-                JOIN job_run_result jrr ON jr.id = jrr.job_run_id
+            FROM def.jobs j
+                JOIN def.jobs_run jr ON j.id = jr.job_id
+                JOIN def.jobs_run_result jrr ON jr.id = jrr.job_run_id
             WHERE j.input_file = ?
               AND jr.id = ?
             ORDER BY jrr.finished DESC
@@ -504,19 +510,19 @@ sub get_set_job_details {
 sub run_copy {
     my $self = shift;
 
-    my $sql = $self->generate_sql( $self->config->{sql} );
-    $self->runner->debug('Running COPY to transfer the data');
-
     # Since we are using straight copy to copy, we can do this faster by
     #  using Pg's COPY functionality
-    $self->source_db->do("COPY ($sql) TO STDOUT");
 
     $self->target_db->begin_work();
     try {
         # Run the pre-SQL statement (if any)
-        if ( $sql = $self->generate_sql( $self->config->{target_presql} ) ) {
+        if ( my $sql = $self->generate_sql( $self->config->{target_presql} ) ) {
             $self->target_db->do($sql);
         }
+
+        $self->runner->debug('Running COPY to transfer the data');
+        my $sql = $self->generate_sql( $self->config->{sql} );
+        $self->source_db->do("COPY ($sql) TO STDOUT");
 
         my $target_table = $self->config->{target_table};
         my $target_columns =
@@ -535,7 +541,7 @@ sub run_copy {
         $self->_check_rows();
 
         # Run the post-SQL statement (if any)
-        if ( $sql = $self->generate_sql( $self->config->{target_postsql} ) ) {
+        if ( my $sql = $self->generate_sql( $self->config->{target_postsql} ) ) {
             $self->target_db->do($sql);
         }
     }
@@ -554,7 +560,6 @@ sub run_copy {
 
 sub format_data {
     my ( $self, $format, $rows, $col_names ) = @_;
-    $format = lc $format;
     $self->runner->debug("Formating data into $format format");
     my $string = '';
 
@@ -565,6 +570,9 @@ sub format_data {
         $csv->print( $obj, $col_names );
         $csv->print( $obj, $_ ) for @$rows;
         $obj->close() or _err( 107, "When generating CSV: $!" );
+    }
+    elsif ($format ne 'json' and $format ne 'yaml') {
+        _err (131, "Unknown format '$format'");
     }
     else {
         my @output_rows = ();
@@ -687,6 +695,7 @@ sub run_job {
     my @results = ();
     foreach my $query ( @{ $config->{queries} } ) {
         my $sql = $self->generate_sql( $query->{sql} );
+        my $format = lc $query->{format} || 'csv';
 
         $self->runner->debug('Getting rows from source database');
         my $csr = $self->source_db->prepare($sql);
@@ -720,7 +729,7 @@ sub run_job {
         }
 
         # Transform the data into a string (either YAML, JSON or CSV format)
-        my $str = $self->format_data( $query->{format}, $rows, $col_names );
+        my $str = $self->format_data( $format, $rows, $col_names );
 
         # Determine the filename and content type
         my $filename =
@@ -730,7 +739,7 @@ sub run_job {
         my $content_type =
           $query->{compress}
           ? 'application/zip'
-          : $types{ lc $query->{format} };
+          : $types{$format};
 
         # Do we need to compress the string
         if ( $query->{compress} ) {
@@ -849,7 +858,7 @@ sub send_error {
 
     my $params = { job => { $self->config }, };
 
-    foreach my $word (qw(placeholder_date jobrunid started finished rows error))
+    foreach my $word (qw(file placeholder_date jobrunid started finished rows error))
     {
         $params->{$word} = $self->{$word};
     }
