@@ -144,7 +144,7 @@ my $expected = [
     { city => 'Alice Springs', minimum => 13.2, maximum => 28.8 },
 ];
 
-my $yaml = $job->format_data( $job->config->{format}, $array, $headers );
+my $yaml = $job->format_data( lc $job->config->{format}, $array, $headers );
 my $result = Load($yaml);
 
 is_deeply( $result, $expected, 'YAML data formatted as expected' );
