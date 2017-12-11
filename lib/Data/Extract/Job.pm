@@ -1469,6 +1469,8 @@ Turns an array of array into either a JSON, YAML or CSV string
 
 =over
 
+=item The desired output format ('csv', 'json', 'yaml')
+
 =item An array of arrays with the rows of data
 
 =item An array with the column headers
@@ -1477,7 +1479,8 @@ Turns an array of array into either a JSON, YAML or CSV string
 
 =item B<Returns>
 
-A string, in either JSON, YAML or CSV format
+A string, in either JSON, YAML or CSV format. Will throw and error if the
+output format is not understood.
 
 =back
 
